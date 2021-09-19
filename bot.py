@@ -31,7 +31,7 @@ def echo(update, context):
     print(f'{update["message"]["chat"]["username"]} ({update["message"]["chat"]["first_name"]}): "{update["message"]["text"]}"')
 
 
-start_handler = CommandHandler('start', start)
+start_handler = CommandHandler('help', start)
 echo_handler = MessageHandler(Filters.text & (~Filters.command), echo)
 
 dispatcher.add_handler(start_handler)
@@ -46,28 +46,28 @@ years = {"0": "Tutti gli anni", "1": "Primo anno", "2": "Secondo anno", "3": "Te
 ############################### Bot ############################################
 
 
-def school_start(bot, update):
-    bot.message.reply_text(school_menu_message(),
+def school_start(update, context):
+    update.message.reply_text(school_menu_message(),
                            reply_markup=school_menu_keyboard(), parse_mode=telegram.ParseMode.MARKDOWN)
 
 
 def get_school_menu(school):
-    def school_menu(bot, update):
-        bot.callback_query.message.edit_text(course_menu_message(school),
+    def school_menu(update, context):
+        update.callback_query.message.edit_text(course_menu_message(school),
                                              reply_markup=course_menu_keyboard(school), parse_mode=telegram.ParseMode.MARKDOWN)
 
     return school_menu
 
 
 def get_course_menu(school, course):
-    def course_menu(bot, update):
-        bot.callback_query.message.edit_text(years_menu_message(course), reply_markup=years_menu_keyboard(school, course), parse_mode=telegram.ParseMode.MARKDOWN)
+    def course_menu(update, context):
+        update.callback_query.message.edit_text(years_menu_message(course), reply_markup=years_menu_keyboard(school, course), parse_mode=telegram.ParseMode.MARKDOWN)
     return course_menu
 
 
-def get_years_menu(id, course, year):
-    def years_menu(bot, update):
-        bot.callback_query.message.edit_text(get_final_message(id, course, year), parse_mode=telegram.ParseMode.MARKDOWN)
+def get_years_menu(school, id, course, year):
+    def years_menu(update, context):
+        update.callback_query.message.edit_text(get_final_message(id, course, year), reply_markup=time_menu_keyboard(school, course), parse_mode=telegram.ParseMode.MARKDOWN)
     return years_menu
 
 
@@ -83,18 +83,23 @@ def school_menu_keyboard():
 
 def course_menu_keyboard(school):
     courses_dict = courses.get_courses()
-    keyboard = [[InlineKeyboardButton(f'{single_course} ({courses_dict[school][single_course]})', callback_data=courses_dict[school][single_course])] for single_course in
+    keyboard = [[InlineKeyboardButton(f'{single_course}', callback_data=courses_dict[school][single_course])] for single_course in
                 courses_dict[school]]
     return InlineKeyboardMarkup(keyboard)
 
 
 def years_menu_keyboard(school, course):
     courses_dict = courses.get_courses()
-    keyboard = [[InlineKeyboardButton(f'{years[single_year]} ({single_year})',
+    keyboard = [[InlineKeyboardButton(f'{years[single_year]}',
                                       callback_data=f'{single_year}_{courses_dict[school][course]}')] for single_year in years]
-
+    keyboard.append([InlineKeyboardButton(f'🔙 Torna indietro', callback_data=school)])
     return InlineKeyboardMarkup(keyboard)
 
+def time_menu_keyboard(school, course):
+    courses_dict = courses.get_courses()
+    keyboard = []
+    keyboard.append([InlineKeyboardButton(f'🔙 Torna indietro', callback_data=courses_dict[school][course])])
+    return InlineKeyboardMarkup(keyboard)
 
 ############################# Messages #########################################
 
@@ -115,7 +120,7 @@ def get_final_message(id, course, year):
 ############################# Handlers #########################################
 
 
-updater.dispatcher.add_handler(CommandHandler('orari', school_start))
+updater.dispatcher.add_handler(CommandHandler('start', school_start))
 c = courses.get_courses()
 for school in c:
     updater.dispatcher.add_handler(CallbackQueryHandler(get_school_menu(school), pattern=school))
@@ -123,7 +128,7 @@ for school in c:
     for single_course in all_school_courses:
         updater.dispatcher.add_handler(CallbackQueryHandler(get_course_menu(school, single_course), pattern=c[school][single_course]))
         for single_year in years:
-            updater.dispatcher.add_handler(CallbackQueryHandler(get_years_menu(c[school][single_course], single_course, single_year),
+            updater.dispatcher.add_handler(CallbackQueryHandler(get_years_menu(school, c[school][single_course], single_course, single_year),
                                                                 pattern=f'{single_year}_{c[school][single_course]}'))
 
 def start_bot():
