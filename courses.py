@@ -25,8 +25,8 @@ def get_timetable(course_id, course_year):
           f'=false&parametri%5B%5D={course_year}'
     text = requests.get(url).text
     courses = json.loads(text[text.index('['):])
-    # now = datetime.now()
-    now = datetime.strptime('2021-9-20', '%Y-%m-%d')
+    now = datetime.now()
+    # now = datetime.strptime('2021-9-20', '%Y-%m-%d')
     courses = list(
         filter(lambda lesson: same_date(datetime.strptime(lesson['tester'].split(' ')[0], '%Y-%m-%d'), now), courses))
     return courses
