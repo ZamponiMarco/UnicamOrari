@@ -1,11 +1,15 @@
 import bs4
 import requests
 import json
-from datetime import datetime, timedelta
+from datetime import datetime
+from cache import Cache
+
 
 def same_date(date_one, date_two):
     return date_one.day == date_two.day and date_one.month == date_two.month and date_one.year == date_two.year
 
+
+@Cache
 def get_courses():
     html = requests.get('https://orarilezioni.unicam.it/').text
     soup = bs4.BeautifulSoup(html, features="html.parser")
@@ -19,6 +23,8 @@ def get_courses():
             courses_dict[group['label']][course.decode_contents()] = course['value']
     return courses_dict
 
+
+@Cache
 def get_timetable(course_id, course_year):
     url = f'https://unifare.unicam.it//controller/ajaxController.php?filename=..%2Fdidattica%2Fcontroller%2Forari.php' \
           f'&class=OrariController&method=getDateLezioniByPercorsoCalendar&parametri%5B%5D={course_id}&parametri%5B%5D' \
