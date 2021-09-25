@@ -1,4 +1,7 @@
-def get_pretty_message(course, year, lessons):
+from typing import Dict, Any
+
+
+def get_pretty_message(course: str, year: str, lessons) -> str:
     header = f'🎓 *{course}, {year}*\n\n'
     final_message = ""
     for single_lesson in lessons:
@@ -9,5 +12,6 @@ def get_pretty_message(course, year, lessons):
         final_message= "Non sono presenti materie per la data e facoltà selezionate."
     return header+final_message
 
-def get_startup_message():
+
+def get_startup_message() -> str:
     return f'Benvenuto!\nScrivi /start per iniziare!'

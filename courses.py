@@ -1,7 +1,10 @@
-import bs4
-import requests
 import json
 from datetime import datetime
+from typing import Any, List, Dict
+
+import bs4
+import requests
+
 from cache import Cache
 
 
@@ -10,7 +13,7 @@ def same_date(date_one, date_two):
 
 
 @Cache
-def get_courses():
+def get_courses() -> Dict[str, Dict[str, str]]:
     html = requests.get('https://orarilezioni.unicam.it/').text
     soup = bs4.BeautifulSoup(html, features="html.parser")
     courses = soup.find(id='selectPercorsi')
@@ -25,15 +28,14 @@ def get_courses():
 
 
 @Cache
-def get_timetable(course_id, course_year):
+def get_timetable(course_id, course_year) -> List[Dict[str, str]]:
     url = f'https://unifare.unicam.it//controller/ajaxController.php?filename=..%2Fdidattica%2Fcontroller%2Forari.php' \
           f'&class=OrariController&method=getDateLezioniByPercorsoCalendar&parametri%5B%5D={course_id}&parametri%5B%5D' \
           f'=false&parametri%5B%5D={course_year}'
     text = requests.get(url).text
     courses = json.loads(text[text.index('['):])
     now = datetime.now()
-    # now = datetime.strptime('2021-9-20', '%Y-%m-%d')
+    now = datetime.strptime('2021-9-27', '%Y-%m-%d')
     courses = list(
         filter(lambda lesson: same_date(datetime.strptime(lesson['tester'].split(' ')[0], '%Y-%m-%d'), now), courses))
     return courses
-    #return json.dumps(courses, indent=4, sort_keys=True)

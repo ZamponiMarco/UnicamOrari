@@ -9,10 +9,11 @@ class Cache:
     """
 
     #   a dict of sets, one for each instance of this class
+    collector_thread = None
     __allInstances = set()  # where the cached values are actually kept
 
-    maxAge = 3600  # the default max allowed age of a cache entry (in seconds)
-    collectionInterval = 2  # how long to wait between collection events
+    max_age = 3600  # the default max allowed age of a cache entry (in seconds)
+    collection_interval = 2  # how long to wait between collection events
     __stopCollecting = False
 
     def __init__(self, func):
@@ -48,7 +49,7 @@ class Cache:
         now = time.time()
         for key, v in self._store.items():
             t, value = v  # creation time, function output
-            if 0 < self.maxAge < now - t:  # max ages of zero mean don't collect
+            if 0 < self.max_age < now - t:  # max ages of zero mean don't collect
                 del self._store[key]
 
     @classmethod
@@ -62,16 +63,16 @@ class Cache:
         """Periodically clean up old entries until the stop flag is set"""
 
         while cls.__stopCollecting is not True:
-            time.sleep(cls.collectionInterval)
+            time.sleep(cls.collection_interval)
             cls.collect_all()
 
     @classmethod
     def start_collection(cls):
         """Start the automatic collection process in its own thread"""
 
-        cls.collectorThread = threading.Thread(target=cls._start_collection)
-        cls.collectorThread.setDaemon(False)
-        cls.collectorThread.start()
+        cls.collector_thread = threading.Thread(target=cls._start_collection)
+        cls.collector_thread.setDaemon(False)
+        cls.collector_thread.start()
 
     @classmethod
     def stop_collection(cls):
