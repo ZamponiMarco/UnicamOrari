@@ -6,7 +6,7 @@ import bs4
 import requests
 
 from cache import Cache
-from school_types import Lesson
+from school_types import Lesson, School
 
 
 def same_date(date_one, date_two):
@@ -14,7 +14,7 @@ def same_date(date_one, date_two):
 
 
 @Cache
-def get_courses() -> Dict[str, Dict[str, str]]:
+def get_courses() -> List[School]:
     html = requests.get('https://orarilezioni.unicam.it/').text
     soup = bs4.BeautifulSoup(html, features="html.parser")
     courses = soup.find(id='selectPercorsi')
@@ -25,7 +25,7 @@ def get_courses() -> Dict[str, Dict[str, str]]:
         courses = group.findChildren()
         for course in courses:
             courses_dict[group['label']][course.decode_contents()] = course['value']
-    return courses_dict
+    return [School(name, d) for name, d in courses_dict.items()]
 
 
 @Cache

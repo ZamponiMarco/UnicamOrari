@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Dict
+from typing import Callable, Dict, List
 
 import telegram
 from dotenv import load_dotenv
@@ -13,6 +13,7 @@ from telegram.ext.utils.types import CCT
 
 import courses
 import messages
+from school_types import School, Course
 
 
 def start(update, context):
@@ -36,7 +37,7 @@ def school_start(update: Update, context: CCT) -> None:
                               reply_markup=school_menu_keyboard(), parse_mode=telegram.ParseMode.MARKDOWN)
 
 
-def get_school_menu(selected_school: str) -> Callable[[Update, CCT], None]:
+def get_school_menu(selected_school: School) -> Callable[[Update, CCT], None]:
     def school_menu(update: Update, context: CCT) -> None:
         update.callback_query.message.edit_text(course_menu_message(selected_school),
                                                 reply_markup=course_menu_keyboard(selected_school),
@@ -45,7 +46,7 @@ def get_school_menu(selected_school: str) -> Callable[[Update, CCT], None]:
     return school_menu
 
 
-def get_course_menu(selected_school: str, course) -> Callable[[Update, CCT], None]:
+def get_course_menu(selected_school: School, course: Course) -> Callable[[Update, CCT], None]:
     def course_menu(update: Update, context: CCT) -> None:
         update.callback_query.message.edit_text(years_menu_message(course),
                                                 reply_markup=years_menu_keyboard(selected_school, course),
@@ -54,11 +55,10 @@ def get_course_menu(selected_school: str, course) -> Callable[[Update, CCT], Non
     return course_menu
 
 
-def get_years_menu(selected_school: str, course_id: str, course: str, year: str) -> \
-        Callable[[Update, CCT], None]:
+def get_years_menu(course: Course, year: str) -> Callable[[Update, CCT], None]:
     def years_menu(update: Update, context: CCT) -> None:
-        update.callback_query.message.edit_text(get_final_message(course_id, course, year),
-                                                reply_markup=time_menu_keyboard(selected_school, course),
+        update.callback_query.message.edit_text(get_final_message(course, year),
+                                                reply_markup=time_menu_keyboard(course),
                                                 parse_mode=telegram.ParseMode.MARKDOWN)
 
     return years_menu
@@ -68,33 +68,28 @@ def get_years_menu(selected_school: str, course_id: str, course: str, year: str)
 
 
 def school_menu_keyboard() -> InlineKeyboardMarkup:
-    courses_dict = courses.get_courses()
-    courses_dict.keys()
-    keyboard = [[InlineKeyboardButton(selected_school, callback_data=selected_school)] for selected_school in
-                courses_dict]
+    schools: List[School] = courses.get_courses()
+    keyboard = [[InlineKeyboardButton(selected_school.name, callback_data=selected_school.name)] for selected_school in
+                schools]
     return InlineKeyboardMarkup(keyboard)
 
 
-def course_menu_keyboard(selected_school: str) -> InlineKeyboardMarkup:
-    courses_dict = courses.get_courses()
-    keyboard = [[InlineKeyboardButton(f'{selected_single_course}',
-                                      callback_data=courses_dict[selected_school][selected_single_course])] for
-                selected_single_course in courses_dict[selected_school]]
+def course_menu_keyboard(selected_school: School) -> InlineKeyboardMarkup:
+    keyboard = [[InlineKeyboardButton(f'{selected_single_course.name}', callback_data=selected_single_course.name)] for
+                selected_single_course in selected_school.courses]
     return InlineKeyboardMarkup(keyboard)
 
 
-def years_menu_keyboard(selected_school: str, course: str) -> InlineKeyboardMarkup:
-    courses_dict = courses.get_courses()
+def years_menu_keyboard(selected_school: School, course: Course) -> InlineKeyboardMarkup:
     keyboard = [[InlineKeyboardButton(f'{years[selected_single_year]}',
-                                      callback_data=f'{selected_single_year}_{courses_dict[selected_school][course]}')]
-                for selected_single_year in years]
-    keyboard.append([InlineKeyboardButton(f'🔙 Torna indietro', callback_data=selected_school)])
+                                      callback_data=f'{selected_single_year}_{course.name}')] for selected_single_year
+                in years]
+    keyboard.append([InlineKeyboardButton(f'🔙 Torna indietro', callback_data=selected_school.name)])
     return InlineKeyboardMarkup(keyboard)
 
 
-def time_menu_keyboard(selected_school: str, course: str) -> InlineKeyboardMarkup:
-    courses_dict = courses.get_courses()
-    keyboard = [[InlineKeyboardButton(f'🔙 Torna indietro', callback_data=courses_dict[selected_school][course])]]
+def time_menu_keyboard(course: Course) -> InlineKeyboardMarkup:
+    keyboard = [[InlineKeyboardButton(f'🔙 Torna indietro', callback_data=course.name)]]
     return InlineKeyboardMarkup(keyboard)
 
 
@@ -105,16 +100,16 @@ def school_menu_message() -> str:
     return '🏫 *Seleziona la scuola*'
 
 
-def course_menu_message(selected_school: str) -> str:
-    return f'🏫 *{selected_school}*\n🎓 Seleziona la facoltà'
+def course_menu_message(selected_school: School) -> str:
+    return f'🏫 *{selected_school.name}*\n🎓 Seleziona la facoltà'
 
 
-def years_menu_message(course: str) -> str:
-    return f'🎓 *{course}*\n📅 Seleziona l\'anno'
+def years_menu_message(course: Course) -> str:
+    return f'🎓 *{course.name}*\n📅 Seleziona l\'anno'
 
 
-def get_final_message(course_id: str, course: str, year: str) -> str:
-    return messages.get_pretty_message(course, years[year], courses.get_timetable(course_id, year))
+def get_final_message(course: Course, year: str) -> str:
+    return messages.get_pretty_message(course.name, years[year], courses.get_timetable(course.course_id, year))
 
 
 # Handlers
@@ -137,17 +132,17 @@ years: Dict[str, str] = {"0": "Tutti gli anni", "1": "Primo anno", "2": "Secondo
                          "4": "Quarto anno", "5": "Quinto anno"}
 
 updater.dispatcher.add_handler(CommandHandler('start', school_start))
-c = courses.get_courses()
+c: List[School] = courses.get_courses()
 for school in c:
-    updater.dispatcher.add_handler(CallbackQueryHandler(get_school_menu(school), pattern=school))
-    all_school_courses = c[school]
+    updater.dispatcher.add_handler(CallbackQueryHandler(get_school_menu(school), pattern=school.name))
+    all_school_courses: List[Course] = school.courses
     for single_course in all_school_courses:
         updater.dispatcher.add_handler(
-            CallbackQueryHandler(get_course_menu(school, single_course), pattern=c[school][single_course]))
+            CallbackQueryHandler(get_course_menu(school, single_course), pattern=single_course.name))
         for single_year in years:
             updater.dispatcher.add_handler(
-                CallbackQueryHandler(get_years_menu(school, c[school][single_course], single_course, single_year),
-                                     pattern=f'{single_year}_{c[school][single_course]}'))
+                CallbackQueryHandler(get_years_menu(single_course, single_year),
+                                     pattern=f'{single_year}_{single_course.name}'))
 
 
 def start_bot():
