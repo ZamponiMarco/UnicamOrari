@@ -6,6 +6,7 @@ import bs4
 import requests
 
 from cache import Cache
+from school_types import Lesson
 
 
 def same_date(date_one, date_two):
@@ -28,14 +29,14 @@ def get_courses() -> Dict[str, Dict[str, str]]:
 
 
 @Cache
-def get_timetable(course_id, course_year) -> List[Dict[str, str]]:
+def get_timetable(course_id: str, course_year: str) -> List[Lesson]:
     url = f'https://unifare.unicam.it//controller/ajaxController.php?filename=..%2Fdidattica%2Fcontroller%2Forari.php' \
           f'&class=OrariController&method=getDateLezioniByPercorsoCalendar&parametri%5B%5D={course_id}&parametri%5B%5D' \
           f'=false&parametri%5B%5D={course_year}'
     text = requests.get(url).text
-    courses = json.loads(text[text.index('['):])
+    courses: List[Dict[str, Any]] = json.loads(text[text.index('['):])
     now = datetime.now()
     now = datetime.strptime('2021-9-27', '%Y-%m-%d')
     courses = list(
         filter(lambda lesson: same_date(datetime.strptime(lesson['tester'].split(' ')[0], '%Y-%m-%d'), now), courses))
-    return courses
+    return [Lesson(d) for d in courses]
